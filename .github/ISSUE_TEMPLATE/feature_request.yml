@@ -1,0 +1,71 @@
+name: Feature Request
+description: Propose a new feature or enhancement for CompleteClaw
+title: "[Feature]: "
+labels: ["enhancement", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for suggesting a new feature! Please fill out the sections below so contributors can understand the goal and get started without guesswork.
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Context & Problem Statement
+      description: What problem does this feature solve? Who benefits and why is it important for the project?
+      placeholder: |
+        Currently, contributors/users cannot... This feature would allow... which is valuable because...
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed-solution
+    attributes:
+      label: Proposed Solution
+      description: Describe the feature you would like to see implemented.
+      placeholder: |
+        Add a new... that allows users to... by...
+    validations:
+      required: true
+
+  - type: textarea
+    id: implementation-steps
+    attributes:
+      label: Implementation Steps
+      description: Break down the work into clear, actionable steps a contributor can follow.
+      placeholder: |
+        1. Create/update...
+        2. Implement...
+        3. Add tests covering...
+        4. Update documentation for...
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Acceptance Criteria
+      description: Define the conditions that must be met for this feature to be considered complete.
+      placeholder: |
+        - [ ] Users can... without errors
+        - [ ] Feature is covered by unit/integration tests
+        - [ ] Documentation is updated to reflect the new feature
+        - [ ] No regression in existing functionality
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: Describe any alternative solutions or features you've considered.
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      description: Add any other context, mockups, or references that may help contributors.
+    validations:
+      required: false
