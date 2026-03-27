@@ -8,13 +8,10 @@ from __future__ import annotations
 
 import json
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from completeclaw.agents.base import Agent, AgentResult
 from completeclaw.llm.base import Message, Role
-from completeclaw.memory.base import Memory
-from completeclaw.tools.base import Tool
-
 
 _SYSTEM_TEMPLATE = """\
 You are a helpful AI assistant that reasons step-by-step and uses tools when needed.

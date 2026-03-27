@@ -7,7 +7,6 @@ used in unit tests or wired up to any search back-end.
 
 from __future__ import annotations
 
-import abc
 import json
 import urllib.parse
 import urllib.request

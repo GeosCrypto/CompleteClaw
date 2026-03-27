@@ -8,7 +8,6 @@ from completeclaw.workflows.base import WorkflowResult, WorkflowStep
 from completeclaw.workflows.chain import SequentialChain
 from completeclaw.workflows.pipeline import Pipeline, PipelineStep
 
-
 # ---------------------------------------------------------------------------
 # SequentialChain
 # ---------------------------------------------------------------------------

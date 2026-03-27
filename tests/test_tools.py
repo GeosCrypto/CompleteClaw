@@ -5,13 +5,10 @@ from __future__ import annotations
 import os
 import tempfile
 
-import pytest
-
-from completeclaw.tools.base import Tool, ToolRegistry, ToolResult
+from completeclaw.tools.base import ToolRegistry, ToolResult
 from completeclaw.tools.calculator import CalculatorTool
 from completeclaw.tools.file_io import FileReadTool, FileWriteTool
 from completeclaw.tools.search import WebSearchTool
-
 
 # ---------------------------------------------------------------------------
 # ToolResult

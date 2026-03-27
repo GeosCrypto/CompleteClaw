@@ -2,13 +2,9 @@
 
 from __future__ import annotations
 
-import pytest
-
-from completeclaw.memory.base import Memory, MemoryEntry
+from completeclaw.llm.mock import MockLLMProvider
 from completeclaw.memory.buffer import BufferMemory
 from completeclaw.memory.summary import SummaryMemory
-from completeclaw.llm.mock import MockLLMProvider
-
 
 # ---------------------------------------------------------------------------
 # BufferMemory

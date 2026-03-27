@@ -9,7 +9,6 @@ from typing import Any
 
 from completeclaw.tools.base import Tool, ToolResult
 
-
 # Supported operators
 _OPS = {
     ast.Add: operator.add,

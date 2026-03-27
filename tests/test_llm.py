@@ -2,11 +2,8 @@
 
 from __future__ import annotations
 
-import pytest
-
-from completeclaw.llm.base import LLMProvider, LLMResponse, Message, Role
+from completeclaw.llm.base import LLMResponse, Message, Role
 from completeclaw.llm.mock import MockLLMProvider
-
 
 # ---------------------------------------------------------------------------
 # MockLLMProvider

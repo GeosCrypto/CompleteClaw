@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Any, Iterator, List, Optional, Sequence
+from typing import Any, Iterator, Optional, Sequence
 
-from completeclaw.llm.base import LLMProvider, LLMResponse, Message, Role
+from completeclaw.llm.base import LLMProvider, LLMResponse, Message
 
 
 class OpenAIProvider(LLMProvider):

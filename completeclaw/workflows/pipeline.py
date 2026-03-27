@@ -92,7 +92,6 @@ class Pipeline(Workflow):
         ctx: Dict[str, Any] = dict(context or {})
         ctx.update(kwargs)
 
-        step_map = {s.name: s for s in self._steps}
         completed: Dict[str, Any] = {}
         pending = list(self._steps)
 

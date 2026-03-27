@@ -2,14 +2,11 @@
 
 from __future__ import annotations
 
-import pytest
-
 from completeclaw.agents.react import ReActAgent
 from completeclaw.llm.mock import MockLLMProvider
 from completeclaw.memory.buffer import BufferMemory
-from completeclaw.tools.calculator import CalculatorTool
 from completeclaw.tools.base import Tool, ToolResult
-
+from completeclaw.tools.calculator import CalculatorTool
 
 # ---------------------------------------------------------------------------
 # Helper tool
