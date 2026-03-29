@@ -2,14 +2,17 @@
 
 from __future__ import annotations
 
+import http.server
 import os
 import tempfile
+import threading
 
 import pytest
 
 from completeclaw.tools.base import Tool, ToolRegistry, ToolResult
 from completeclaw.tools.calculator import CalculatorTool
 from completeclaw.tools.file_io import FileReadTool, FileWriteTool
+from completeclaw.tools.http import HttpRequestTool
 from completeclaw.tools.search import WebSearchTool
 
 # ---------------------------------------------------------------------------
@@ -148,3 +151,100 @@ class TestWebSearchTool:
         r = WebSearchTool().run(query="Python AI")
         assert r.success
         assert "Python AI" in r.output
+
+
+# ---------------------------------------------------------------------------
+# HttpRequestTool
+# ---------------------------------------------------------------------------
+
+
+class _SimpleHandler(http.server.BaseHTTPRequestHandler):
+    """Minimal handler used in tests – no logging to stdout."""
+
+    def log_message(self, *args):  # silence server log output
+        pass
+
+    def do_GET(self):
+        if self.path == "/ok":
+            body = b'{"status": "ok"}'
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+        elif self.path == "/error":
+            self.send_response(404)
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+        else:
+            self.send_response(200)
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+
+    def do_POST(self):
+        length = int(self.headers.get("Content-Length", 0))
+        body = self.rfile.read(length)
+        self.send_response(200)
+        self.send_header("Content-Type", "text/plain")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)  # echo the body back
+
+
+def _start_server():
+    """Start a one-shot local HTTP server and return (server, base_url)."""
+    server = http.server.HTTPServer(("127.0.0.1", 0), _SimpleHandler)
+    port = server.server_address[1]
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    return server, f"http://127.0.0.1:{port}"
+
+
+class TestHttpRequestTool:
+    @classmethod
+    def setup_class(cls):
+        cls.server, cls.base_url = _start_server()
+
+    @classmethod
+    def teardown_class(cls):
+        cls.server.shutdown()
+
+    def test_get_request_success(self):
+        tool = HttpRequestTool()
+        result = tool.run(url=f"{self.base_url}/ok")
+        assert result.success
+        assert "ok" in result.output
+        assert result.metadata["status"] == 200
+
+    def test_get_request_http_error(self):
+        tool = HttpRequestTool()
+        result = tool.run(url=f"{self.base_url}/error")
+        assert result.success is False
+        assert "404" in result.error
+
+    def test_post_with_json_body(self):
+        tool = HttpRequestTool()
+        result = tool.run(url=f"{self.base_url}/post", method="POST", body={"key": "val"})
+        assert result.success
+        # Server echoes the body back
+        assert "key" in result.output
+
+    def test_missing_url_returns_error(self):
+        tool = HttpRequestTool()
+        result = tool.run(url="")
+        assert result.success is False
+        assert "url" in result.error.lower()
+
+    def test_invalid_url_returns_error(self):
+        tool = HttpRequestTool()
+        result = tool.run(url="http://127.0.0.1:1/unreachable", timeout=1)
+        assert result.success is False
+
+    def test_tool_name_and_description(self):
+        tool = HttpRequestTool()
+        assert tool.name == "http_request"
+        assert "HTTP" in tool.description
+
+    def test_repr(self):
+        assert "HttpRequestTool" in repr(HttpRequestTool())
+
