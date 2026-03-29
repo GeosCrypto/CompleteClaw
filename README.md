@@ -13,10 +13,11 @@
 |---------|--------|
 | **Zero mandatory dependencies** | Core framework is pure stdlib – no `pip install` surprise |
 | **Plug-and-play LLM backends** | OpenAI, Anthropic, Ollama, or mock (offline testing) |
-| **Two agent patterns** | `ReActAgent` (fast, single-loop) · `PlanAndExecuteAgent` (plan first, then execute) |
-| **Extensible tool system** | Calculator, File I/O, HTTP requests, Web search – or build your own |
-| **Flexible memory** | Sliding-window buffer or LLM-compressed summary memory |
-| **Workflow orchestration** | Sequential chains and parallel pipelines with dependency resolution |
+| **Three agent patterns** | `ReActAgent` · `PlanAndExecuteAgent` · `RouterAgent` (multi-agent delegation) |
+| **Extensible tool system** | Calculator, File I/O, HTTP requests, JSON, Web search – or build your own |
+| **Flexible memory** | Sliding-window buffer, LLM-compressed summary, or persistent file-backed memory |
+| **Workflow orchestration** | Sequential chains, parallel pipelines, and conditional if/else branching |
+| **Retry utility** | Exponential-backoff decorator for transient LLM / API failures |
 
 ---
 
@@ -64,11 +65,11 @@ print(result.steps[0]["observation"])  # "42"  (returned by CalculatorTool)
 ```
 completeclaw/
 ├── llm/          LLM provider abstraction (OpenAI · Anthropic · Ollama · Mock)
-├── agents/       Agent patterns (ReActAgent · PlanAndExecuteAgent)
-├── tools/        Tool/plugin system (Calculator · FileIO · HTTP · Search)
-├── memory/       Memory stores (BufferMemory · SummaryMemory)
-├── workflows/    Workflow orchestration (SequentialChain · Pipeline)
-└── utils/        Helpers (structured logging)
+├── agents/       Agent patterns (ReActAgent · PlanAndExecuteAgent · RouterAgent)
+├── tools/        Tool/plugin system (Calculator · FileIO · HTTP · JSON · Search)
+├── memory/       Memory stores (BufferMemory · SummaryMemory · FileMemory)
+├── workflows/    Workflow orchestration (SequentialChain · Pipeline · ConditionalChain)
+└── utils/        Helpers (structured logging · retry decorator)
 ```
 
 ---
@@ -165,6 +166,36 @@ class MyAgent(Agent):
         return AgentResult(output=reply)
 ```
 
+#### `RouterAgent` – Multi-agent delegation
+
+Routes each incoming task to the most appropriate specialised sub-agent.  The
+routing decision is made by the LLM, which is prompted with the list of agents
+and their descriptions.
+
+```python
+from completeclaw import RouterAgent, ReActAgent, CalculatorTool
+from completeclaw.llm.openai import OpenAIProvider
+
+math_agent = ReActAgent(OpenAIProvider(), tools=[CalculatorTool()])
+chat_agent = ReActAgent(OpenAIProvider())
+
+router = RouterAgent(
+    llm=OpenAIProvider(),
+    agents={"math": math_agent, "chat": chat_agent},
+    descriptions={"math": "Handles calculations and maths", "chat": "General conversation"},
+    fallback=chat_agent,   # used when routing cannot decide
+)
+result = router.run("What is sqrt(1764)?")
+print(result.output)                    # "42"
+print(result.metadata["routed_to"])     # "math"
+```
+
+Register sub-agents at runtime:
+
+```python
+router.register("code", code_agent, description="Writes and explains Python code")
+```
+
 ---
 
 ### Tools (`completeclaw.tools`)
@@ -226,6 +257,37 @@ result = tool.run(query="Python AI frameworks 2025")
 print(result.output)
 ```
 
+#### `JsonTool`
+
+Parses, queries, and formats JSON data using only the standard library.
+Ideal for extracting fields from API responses.
+
+```python
+from completeclaw import JsonTool
+
+tool = JsonTool()
+
+# Pretty-print / parse
+r = tool.run(data='{"name":"Alice","scores":[95,87,92]}')
+print(r.output)
+# {
+#   "name": "Alice",
+#   "scores": [95, 87, 92]
+# }
+
+# Query a nested value (dot-notation; integers index into lists)
+r = tool.run(operation="query", data='{"name":"Alice","scores":[95,87,92]}', path="scores.1")
+print(r.output)  # "87"
+
+# Query returns a sub-object as pretty JSON
+r = tool.run(operation="query", data='{"user":{"name":"Bob","age":30}}', path="user")
+print(r.output)
+# {
+#   "name": "Bob",
+#   "age": 30
+# }
+```
+
 #### Build your own tool
 
 ```python
@@ -268,6 +330,26 @@ from completeclaw.llm.openai import OpenAIProvider
 mem = SummaryMemory(llm=OpenAIProvider(), max_entries=20)
 ```
 
+#### `FileMemory` – persistent file-backed memory
+
+Saves all entries to a JSON file immediately on every write.  History survives
+process restarts and crashes.
+
+```python
+from completeclaw import FileMemory, ReActAgent
+from completeclaw.llm.openai import OpenAIProvider
+
+# First session
+mem = FileMemory(path="~/.completeclaw/history.json", max_entries=100)
+agent = ReActAgent(OpenAIProvider(), memory=mem)
+agent.run("My name is Alice.")
+
+# Later session – history is automatically reloaded from disk
+mem2 = FileMemory(path="~/.completeclaw/history.json")
+agent2 = ReActAgent(OpenAIProvider(), memory=mem2)
+result = agent2.run("What is my name?")   # recalls "Alice"
+```
+
 ---
 
 ### Workflows (`completeclaw.workflows`)
@@ -304,6 +386,78 @@ p.add_step("report",    fn=lambda ctx: summarise(ctx["transform"]), depends_on=[
 
 result = p.run()
 print(result.get("report"))
+```
+
+#### `ConditionalChain` – if/else branching
+
+Extends `SequentialChain` with conditional guards and explicit if/else branch
+points.  Steps skipped by their condition leave no key in the context.
+Branches may be nested arbitrarily.
+
+```python
+from completeclaw import ConditionalChain, ConditionalStep, BranchStep
+
+chain = ConditionalChain(steps=[
+    ConditionalStep("score", fn=lambda ctx: int(ctx["raw_score"])),
+    BranchStep(
+        name="passed",
+        condition=lambda ctx: ctx["score"] >= 60,
+        if_steps=[
+            ConditionalStep("grade", fn=lambda ctx: "Pass"),
+            ConditionalStep("note",  fn=lambda ctx: "Well done!"),
+        ],
+        else_steps=[
+            ConditionalStep("grade", fn=lambda ctx: "Fail"),
+            ConditionalStep(
+                "note",
+                fn=lambda ctx: "Consider resitting.",
+                condition=lambda ctx: ctx["score"] < 40,  # only below 40
+            ),
+        ],
+    ),
+])
+
+r = chain.run(context={"raw_score": "75"})
+print(r.get("grade"))   # "Pass"
+print(r.get("passed"))  # True
+print(r.get("note"))    # "Well done!"
+
+r2 = chain.run(context={"raw_score": "35"})
+print(r2.get("grade"))  # "Fail"
+print(r2.get("note"))   # "Consider resitting."
+```
+
+---
+
+## Utilities (`completeclaw.utils`)
+
+### `retry` – exponential-backoff decorator
+
+Retries a function on transient failures with configurable back-off and jitter.
+
+```python
+from completeclaw import retry
+
+@retry(exceptions=ConnectionError, max_attempts=5, base_delay=1.0, backoff=2.0)
+def call_llm(prompt: str) -> str:
+    ...  # may raise ConnectionError transiently
+
+# Use with an LLM provider method:
+from completeclaw.utils.retry import retry as _retry
+
+class MyProvider(LLMProvider):
+    @_retry(exceptions=(RateLimitError,), max_attempts=4, base_delay=2.0)
+    def chat(self, messages, **kwargs):
+        ...
+```
+
+### `get_logger` – structured logging
+
+```python
+from completeclaw import get_logger
+
+logger = get_logger(__name__)
+logger.info("Agent started")
 ```
 
 ---

@@ -6,6 +6,7 @@ import pytest
 
 from completeclaw.workflows.base import WorkflowResult, WorkflowStep
 from completeclaw.workflows.chain import SequentialChain
+from completeclaw.workflows.conditional import BranchStep, ConditionalChain, ConditionalStep
 from completeclaw.workflows.pipeline import Pipeline
 
 
@@ -78,3 +79,106 @@ class TestPipeline:
     def test_repr(self):
         p = Pipeline(name="my_pipeline")
         assert "Pipeline" in repr(p)
+
+
+# ---------------------------------------------------------------------------
+# ConditionalChain tests
+# ---------------------------------------------------------------------------
+
+
+class TestConditionalChain:
+    def test_unconditional_step_always_runs(self):
+        chain = ConditionalChain(steps=[
+            ConditionalStep("val", fn=lambda ctx: 42),
+        ])
+        result = chain.run()
+        assert result.get("val") == 42
+
+    def test_condition_true_step_runs(self):
+        chain = ConditionalChain(steps=[
+            ConditionalStep("x", fn=lambda ctx: 10),
+            ConditionalStep(
+                "doubled",
+                fn=lambda ctx: ctx["x"] * 2,
+                condition=lambda ctx: ctx["x"] > 5,
+            ),
+        ])
+        result = chain.run()
+        assert result.get("doubled") == 20
+
+    def test_condition_false_step_is_skipped(self):
+        chain = ConditionalChain(steps=[
+            ConditionalStep("x", fn=lambda ctx: 3),
+            ConditionalStep(
+                "doubled",
+                fn=lambda ctx: ctx["x"] * 2,
+                condition=lambda ctx: ctx["x"] > 5,
+            ),
+        ])
+        result = chain.run()
+        assert result.get("doubled") is None  # skipped
+
+    def test_branch_if_path(self):
+        chain = ConditionalChain(steps=[
+            BranchStep(
+                name="branch",
+                condition=lambda ctx: ctx["score"] >= 60,
+                if_steps=[ConditionalStep("result", fn=lambda ctx: "Pass")],
+                else_steps=[ConditionalStep("result", fn=lambda ctx: "Fail")],
+            ),
+        ])
+        result = chain.run(context={"score": 75})
+        assert result.get("result") == "Pass"
+        assert result.get("branch") is True
+
+    def test_branch_else_path(self):
+        chain = ConditionalChain(steps=[
+            BranchStep(
+                name="branch",
+                condition=lambda ctx: ctx["score"] >= 60,
+                if_steps=[ConditionalStep("result", fn=lambda ctx: "Pass")],
+                else_steps=[ConditionalStep("result", fn=lambda ctx: "Fail")],
+            ),
+        ])
+        result = chain.run(context={"score": 45})
+        assert result.get("result") == "Fail"
+        assert result.get("branch") is False
+
+    def test_nested_branches(self):
+        chain = ConditionalChain(steps=[
+            BranchStep(
+                name="outer",
+                condition=lambda ctx: ctx["x"] > 0,
+                if_steps=[
+                    BranchStep(
+                        name="inner",
+                        condition=lambda ctx: ctx["x"] > 10,
+                        if_steps=[ConditionalStep("grade", fn=lambda ctx: "A")],
+                        else_steps=[ConditionalStep("grade", fn=lambda ctx: "B")],
+                    )
+                ],
+                else_steps=[ConditionalStep("grade", fn=lambda ctx: "F")],
+            )
+        ])
+        assert chain.run(context={"x": 15}).get("grade") == "A"
+        assert chain.run(context={"x": 5}).get("grade") == "B"
+        assert chain.run(context={"x": -1}).get("grade") == "F"
+
+    def test_initial_context_is_preserved(self):
+        chain = ConditionalChain(steps=[
+            ConditionalStep("b", fn=lambda ctx: ctx["a"] + 1),
+        ])
+        result = chain.run(context={"a": 10})
+        assert result.get("a") == 10
+        assert result.get("b") == 11
+
+    def test_empty_steps(self):
+        chain = ConditionalChain(steps=[])
+        result = chain.run(context={"x": 1})
+        assert result.get("x") == 1
+
+    def test_repr(self):
+        chain = ConditionalChain(steps=[], name="test_chain")
+        r = repr(chain)
+        assert "ConditionalChain" in r
+        assert "test_chain" in r

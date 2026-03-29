@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from completeclaw.agents.plan_execute import PlanAndExecuteAgent
 from completeclaw.agents.react import ReActAgent
+from completeclaw.agents.router import RouterAgent
 from completeclaw.llm.mock import MockLLMProvider
 from completeclaw.memory.buffer import BufferMemory
 from completeclaw.tools.base import Tool, ToolResult
@@ -231,3 +232,78 @@ class TestPlanAndExecuteAgent:
         agent = PlanAndExecuteAgent(llm)
         result = agent.run("test embedded json")
         assert result.metadata["plan"] == ["Alpha", "Beta"]
+
+
+# ---------------------------------------------------------------------------
+# RouterAgent tests
+# ---------------------------------------------------------------------------
+
+
+class TestRouterAgent:
+    def _make_sub_agents(self):
+        math_llm = MockLLMProvider(responses=["Final Answer: 4"] * 5)
+        chat_llm = MockLLMProvider(responses=["Hello!"] * 5)
+        return {
+            "math": ReActAgent(math_llm, tools=[CalculatorTool()]),
+            "chat": ReActAgent(chat_llm),
+        }
+
+    def test_routes_to_correct_agent(self):
+        sub_agents = self._make_sub_agents()
+        router_llm = MockLLMProvider(responses=["Route to: math"])
+        router = RouterAgent(
+            llm=router_llm,
+            agents=sub_agents,
+            descriptions={"math": "Math tasks", "chat": "General chat"},
+        )
+        result = router.run("What is 2 + 2?")
+        assert result.output == "4"
+        assert result.metadata["routed_to"] == "math"
+
+    def test_routes_to_chat_agent(self):
+        sub_agents = self._make_sub_agents()
+        router_llm = MockLLMProvider(responses=["Route to: chat"])
+        router = RouterAgent(llm=router_llm, agents=sub_agents)
+        result = router.run("Say hello")
+        assert result.output == "Hello!"
+        assert result.metadata["routed_to"] == "chat"
+
+    def test_fallback_used_when_routing_fails(self):
+        sub_agents = self._make_sub_agents()
+        fallback_llm = MockLLMProvider(responses=["Final Answer: fallback used"])
+        fallback = ReActAgent(fallback_llm)
+        router_llm = MockLLMProvider(responses=["I don't know"] * 10)
+        router = RouterAgent(
+            llm=router_llm, agents=sub_agents, fallback=fallback, max_iterations=2
+        )
+        result = router.run("something ambiguous")
+        assert result.metadata["routed_to"] == "fallback"
+
+    def test_no_agents_returns_error(self):
+        router = RouterAgent(llm=MockLLMProvider(), agents={})
+        result = router.run("anything")
+        assert result.metadata.get("error") is not None
+
+    def test_routing_failure_without_fallback(self):
+        sub_agents = self._make_sub_agents()
+        router_llm = MockLLMProvider(responses=["I cannot decide"] * 10)
+        router = RouterAgent(
+            llm=router_llm, agents=sub_agents, fallback=None, max_iterations=2
+        )
+        result = router.run("ambiguous task")
+        assert result.metadata.get("routing_failed") is True
+
+    def test_register_adds_agent(self):
+        router_llm = MockLLMProvider(responses=["Route to: new"])
+        router = RouterAgent(llm=router_llm, agents={})
+        new_agent = ReActAgent(MockLLMProvider(responses=["Final Answer: new agent"]))
+        router.register("new", new_agent, description="A new agent")
+        result = router.run("do something")
+        assert result.metadata["routed_to"] == "new"
+
+    def test_case_insensitive_routing(self):
+        sub_agents = self._make_sub_agents()
+        router_llm = MockLLMProvider(responses=["Route to: MATH"])
+        router = RouterAgent(llm=router_llm, agents=sub_agents)
+        result = router.run("calculate something")
+        assert result.metadata["routed_to"] == "math"

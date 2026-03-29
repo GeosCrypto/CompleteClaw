@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import http.server
+import json as _json
 import os
 import tempfile
 import threading
@@ -13,6 +14,7 @@ from completeclaw.tools.base import Tool, ToolRegistry, ToolResult
 from completeclaw.tools.calculator import CalculatorTool
 from completeclaw.tools.file_io import FileReadTool, FileWriteTool
 from completeclaw.tools.http import HttpRequestTool
+from completeclaw.tools.json_tool import JsonTool
 from completeclaw.tools.search import WebSearchTool
 
 # ---------------------------------------------------------------------------
@@ -248,3 +250,88 @@ class TestHttpRequestTool:
     def test_repr(self):
         assert "HttpRequestTool" in repr(HttpRequestTool())
 
+
+
+# ---------------------------------------------------------------------------
+# JsonTool
+# ---------------------------------------------------------------------------
+
+
+class TestJsonTool:
+    def test_parse_returns_pretty_json(self):
+        tool = JsonTool()
+        r = tool.run(data='{"b":2,"a":1}')
+        assert r.success
+        parsed = _json.loads(r.output)
+        assert parsed == {"b": 2, "a": 1}
+
+    def test_format_operation(self):
+        tool = JsonTool()
+        r = tool.run(operation="format", data='{"x":1}')
+        assert r.success
+        assert "\n" in r.output  # pretty-printed
+
+    def test_query_dict_key(self):
+        tool = JsonTool()
+        r = tool.run(operation="query", data='{"user":{"name":"Alice"}}', path="user.name")
+        assert r.success
+        assert r.output == "Alice"
+
+    def test_query_list_index(self):
+        tool = JsonTool()
+        r = tool.run(operation="query", data='{"items":[10,20,30]}', path="items.1")
+        assert r.success
+        assert r.output == "20"
+
+    def test_query_nested_object_returns_json(self):
+        tool = JsonTool()
+        r = tool.run(operation="query", data='{"a":{"b":{"c":42}}}', path="a.b")
+        assert r.success
+        result = _json.loads(r.output)
+        assert result == {"c": 42}
+
+    def test_query_missing_key_returns_error(self):
+        tool = JsonTool()
+        r = tool.run(operation="query", data='{"a":1}', path="b")
+        assert r.success is False
+        assert "not found" in r.error
+
+    def test_query_out_of_range_index(self):
+        tool = JsonTool()
+        r = tool.run(operation="query", data='[1,2,3]', path="9")
+        assert r.success is False
+
+    def test_query_without_path_returns_error(self):
+        tool = JsonTool()
+        r = tool.run(operation="query", data='{"a":1}')
+        assert r.success is False
+        assert "path" in r.error.lower()
+
+    def test_invalid_json_returns_error(self):
+        tool = JsonTool()
+        r = tool.run(data="{bad json")
+        assert r.success is False
+        assert "Invalid JSON" in r.error
+
+    def test_empty_data_returns_error(self):
+        tool = JsonTool()
+        r = tool.run(data="")
+        assert r.success is False
+
+    def test_unknown_operation_returns_error(self):
+        tool = JsonTool()
+        r = tool.run(operation="unknown", data='{"a":1}')
+        assert r.success is False
+
+    def test_null_value_query(self):
+        tool = JsonTool()
+        r = tool.run(operation="query", data='{"val":null}', path="val")
+        assert r.success
+        assert r.output == "null"
+
+    def test_tool_name_and_description(self):
+        assert JsonTool.name == "json_tool"
+        assert "JSON" in JsonTool.description
+
+    def test_repr(self):
+        assert "JsonTool" in repr(JsonTool())

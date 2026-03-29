@@ -15,13 +15,19 @@ Quick start::
 """
 
 # Agents
-from completeclaw.agents import Agent, AgentResult, PlanAndExecuteAgent, ReActAgent
+from completeclaw.agents import (
+    Agent,
+    AgentResult,
+    PlanAndExecuteAgent,
+    ReActAgent,
+    RouterAgent,
+)
 
 # LLM providers
 from completeclaw.llm import LLMProvider, LLMResponse, Message, MockLLMProvider, Role
 
 # Memory
-from completeclaw.memory import BufferMemory, Memory, MemoryEntry, SummaryMemory
+from completeclaw.memory import BufferMemory, FileMemory, Memory, MemoryEntry, SummaryMemory
 
 # Tools
 from completeclaw.tools import (
@@ -29,6 +35,7 @@ from completeclaw.tools import (
     FileReadTool,
     FileWriteTool,
     HttpRequestTool,
+    JsonTool,
     Tool,
     ToolRegistry,
     ToolResult,
@@ -36,11 +43,14 @@ from completeclaw.tools import (
 )
 
 # Utilities
-from completeclaw.utils import get_logger
+from completeclaw.utils import get_logger, retry
 from completeclaw.version import __version__
 
 # Workflows
 from completeclaw.workflows import (
+    BranchStep,
+    ConditionalChain,
+    ConditionalStep,
     Pipeline,
     SequentialChain,
     Workflow,
@@ -61,6 +71,7 @@ __all__ = [
     "AgentResult",
     "PlanAndExecuteAgent",
     "ReActAgent",
+    "RouterAgent",
     # Tools
     "Tool",
     "ToolResult",
@@ -69,18 +80,24 @@ __all__ = [
     "FileReadTool",
     "FileWriteTool",
     "HttpRequestTool",
+    "JsonTool",
     "WebSearchTool",
     # Memory
     "Memory",
     "MemoryEntry",
     "BufferMemory",
+    "FileMemory",
     "SummaryMemory",
     # Workflows
     "Workflow",
     "WorkflowResult",
     "WorkflowStep",
+    "BranchStep",
+    "ConditionalChain",
+    "ConditionalStep",
     "SequentialChain",
     "Pipeline",
     # Utils
     "get_logger",
+    "retry",
 ]
