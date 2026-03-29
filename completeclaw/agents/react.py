@@ -78,11 +78,10 @@ class ReActAgent(Agent):
         # Inject memory context if available
         if self.memory is not None:
             history = self.memory.load()
+            _ROLE_MAP = {"user": Role.USER, "assistant": Role.ASSISTANT, "system": Role.SYSTEM}
             for entry in history:
-                messages.append(
-                    Message(role=Role.USER if entry.role == "user" else Role.ASSISTANT,
-                            content=entry.content)
-                )
+                role = _ROLE_MAP.get(entry.role, Role.USER)
+                messages.append(Message(role=role, content=entry.content))
 
         messages.append(Message(role=Role.USER, content=task))
 

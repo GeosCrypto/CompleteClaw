@@ -91,7 +91,12 @@ class LLMProvider(abc.ABC):
         max_tokens: Optional[int] = None,
         **kwargs: Any,
     ) -> Iterator[str]:
-        """Stream tokens from the LLM.  Falls back to a single-chunk response."""
+        """Stream tokens from the LLM.
+
+        The default implementation calls :meth:`chat` and yields the full
+        response as a single chunk.  Subclasses should override this method
+        to provide true token-by-token streaming.
+        """
         response = self.chat(
             messages, model=model, temperature=temperature,
             max_tokens=max_tokens, **kwargs

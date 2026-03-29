@@ -103,8 +103,11 @@ class CalculatorTool(Tool):
         try:
             tree = ast.parse(expression.strip(), mode="eval")
             value = _safe_eval(tree)
-            # Return integer string when the result is a whole number
-            output = str(int(value)) if value == int(value) else str(value)
+            # Return integer string when the result is a finite whole number
+            if math.isfinite(value) and value == int(value):
+                output = str(int(value))
+            else:
+                output = str(value)
             return ToolResult(output=output)
         except Exception as exc:
             return ToolResult(output="", success=False, error=str(exc))

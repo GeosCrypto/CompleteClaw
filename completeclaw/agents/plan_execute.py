@@ -114,6 +114,9 @@ class PlanAndExecuteAgent(Agent):
         print(result.output)
     """
 
+    # Number of recent memory entries to include as task context
+    HISTORY_CONTEXT_LIMIT: int = 4
+
     def __init__(
         self,
         llm: Any,
@@ -309,7 +312,7 @@ class PlanAndExecuteAgent(Agent):
         # Inject memory history as context if available
         if self.memory is not None:
             history = self.memory.load()
-            history_text = " | ".join(e.content for e in history[-4:]) if history else ""
+            history_text = " | ".join(e.content for e in history[-self.HISTORY_CONTEXT_LIMIT:]) if history else ""
             task_context = f"{history_text}\n{task}".strip() if history_text else task
         else:
             task_context = task
