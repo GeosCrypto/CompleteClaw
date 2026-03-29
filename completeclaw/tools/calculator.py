@@ -5,7 +5,7 @@ from __future__ import annotations
 import ast
 import math
 import operator
-from typing import Any
+from typing import Any, Dict
 
 from completeclaw.tools.base import Tool, ToolResult
 
@@ -23,7 +23,7 @@ _OPERATORS = {
 }
 
 # Allowed names (constants and math functions)
-_SAFE_NAMES: dict[str, Any] = {
+_SAFE_NAMES: Dict[str, Any] = {
     "pi": math.pi,
     "e": math.e,
     "inf": math.inf,

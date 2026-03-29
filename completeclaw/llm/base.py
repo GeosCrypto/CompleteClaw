@@ -5,7 +5,7 @@ from __future__ import annotations
 import abc
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, Iterator, Optional, Sequence
+from typing import Any, Dict, Iterator, List, Optional, Sequence
 
 
 class Role(str, Enum):
@@ -76,7 +76,7 @@ class LLMProvider(abc.ABC):
 
     def complete(self, prompt: str, system: Optional[str] = None, **kwargs: Any) -> str:
         """Simple text-in, text-out convenience wrapper around :meth:`chat`."""
-        messages: list[Message] = []
+        messages: List[Message] = []
         if system:
             messages.append(Message(role=Role.SYSTEM, content=system))
         messages.append(Message(role=Role.USER, content=prompt))

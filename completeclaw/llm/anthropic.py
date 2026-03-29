@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-from typing import Any, Iterator, Optional, Sequence
+from typing import Any, Dict, Iterator, List, Optional, Sequence, Tuple
 
 from completeclaw.llm.base import LLMProvider, LLMResponse, Message, Role
 
@@ -51,10 +51,10 @@ class AnthropicProvider(LLMProvider):
 
     def _split_messages(
         self, messages: Sequence[Message]
-    ) -> tuple[Optional[str], list[dict[str, Any]]]:
+    ) -> Tuple[Optional[str], List[Dict[str, Any]]]:
         """Separate the system prompt from the conversation messages."""
         system: Optional[str] = None
-        api_messages: list[dict[str, Any]] = []
+        api_messages: List[Dict[str, Any]] = []
         for m in messages:
             if m.role == Role.SYSTEM:
                 system = m.content
@@ -72,7 +72,7 @@ class AnthropicProvider(LLMProvider):
         **kwargs: Any,
     ) -> LLMResponse:
         system, api_messages = self._split_messages(messages)
-        params: dict[str, Any] = {
+        params: Dict[str, Any] = {
             "model": model or self.default_model,
             "max_tokens": max_tokens or 1024,
             "messages": api_messages,
@@ -99,7 +99,7 @@ class AnthropicProvider(LLMProvider):
         **kwargs: Any,
     ) -> Iterator[str]:
         system, api_messages = self._split_messages(messages)
-        params: dict[str, Any] = {
+        params: Dict[str, Any] = {
             "model": model or self.default_model,
             "max_tokens": max_tokens or 1024,
             "messages": api_messages,

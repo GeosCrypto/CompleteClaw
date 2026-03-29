@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-from typing import Any, Iterator, Optional, Sequence
+from typing import Any, Dict, Iterator, Optional, Sequence
 
 from completeclaw.llm.base import LLMProvider, LLMResponse, Message
 
@@ -62,7 +62,7 @@ class OpenAIProvider(LLMProvider):
         **kwargs: Any,
     ) -> LLMResponse:
         api_messages = [m.to_dict() for m in messages]
-        params: dict[str, Any] = {
+        params: Dict[str, Any] = {
             "model": model or self.default_model,
             "messages": api_messages,
             "temperature": temperature,
@@ -96,7 +96,7 @@ class OpenAIProvider(LLMProvider):
         **kwargs: Any,
     ) -> Iterator[str]:
         api_messages = [m.to_dict() for m in messages]
-        params: dict[str, Any] = {
+        params: Dict[str, Any] = {
             "model": model or self.default_model,
             "messages": api_messages,
             "temperature": temperature,

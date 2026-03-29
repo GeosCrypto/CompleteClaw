@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import deque
-from typing import List, Optional
+from typing import Deque, List, Optional
 
 from completeclaw.memory.base import Memory, MemoryEntry
 
@@ -26,7 +26,7 @@ class BufferMemory(Memory):
     """
 
     def __init__(self, max_entries: Optional[int] = None) -> None:
-        self._store: deque[MemoryEntry] = deque(
+        self._store: Deque[MemoryEntry] = deque(
             maxlen=max_entries
         )
 
